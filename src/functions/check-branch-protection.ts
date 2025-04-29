@@ -42,12 +42,16 @@ export async function checkBranchProtection(branches: BranchResponse[]): Promise
 
     // Check rulesets
     try {
-      core.info(`Checking rulesets...`)
+      core.info(`\nChecking rulesets for ${branch.branchName}...`)
+      core.info(`Making API call to: GET /repos/${owner}/${repo}/branches/${branch.branchName}/rules`)
+
       const rulesets = (await github.rest.repos.getBranchRules({
         owner,
         repo,
         branch: branch.branchName
       })) as RulesetResponse
+
+      core.info(`API call successful. Response: ${JSON.stringify(rulesets, null, 2)}`)
 
       hasRulesetProtection = rulesets.data.length > 0
       rulesetAllowsDeletion = !rulesets.data.some(ruleset => !ruleset.deletion)
@@ -56,12 +60,18 @@ export async function checkBranchProtection(branches: BranchResponse[]): Promise
         core.info(`Ruleset details: ${JSON.stringify(rulesets.data, null, 2)}`)
       }
     } catch (err) {
-      if (err instanceof RequestError && err.status === 404) {
-        core.info(`Rulesets: No rules found (404)`)
+      core.info(`\nRuleset API call failed for ${branch.branchName}`)
+      if (err instanceof RequestError) {
+        core.info(`Status: ${err.status}`)
+        core.info(`Message: ${err.message}`)
+        core.info(`Response: ${JSON.stringify(err.response, null, 2)}`)
       } else if (err instanceof Error) {
-        core.info(`Ruleset check failed: ${err.message}`)
+        core.info(`Error type: ${err.constructor.name}`)
+        core.info(`Message: ${err.message}`)
+        core.info(`Stack: ${err.stack}`)
       } else {
-        core.info(`Ruleset check failed: Unknown error`)
+        core.info(`Unknown error type: ${typeof err}`)
+        core.info(`Error: ${JSON.stringify(err)}`)
       }
     }
 
