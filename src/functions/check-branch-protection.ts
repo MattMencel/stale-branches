@@ -10,12 +10,23 @@ export async function checkBranchProtection(branches: BranchResponse[]): Promise
 
   for (const branch of branches) {
     try {
+      // Check legacy branch protection
       const branchProtection = await github.rest.repos.getBranchProtection({
         owner,
         repo,
         branch: branch.branchName
       })
-      if (!branchProtection.data.allow_deletions?.enabled) {
+      
+      // Check rulesets
+      const rulesets = await github.rest.repos.getBranchRules({
+        owner,
+        repo,
+        branch: branch.branchName
+      })
+
+      // If either legacy protection or rulesets prevent deletion, remove the branch
+      if (!branchProtection.data.allow_deletions?.enabled || 
+          rulesets.data.some(ruleset => !ruleset.allow_deletions)) {
         //remove branch from list
         branchesToRemove.push(branch)
       }
