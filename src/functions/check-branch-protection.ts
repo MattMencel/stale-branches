@@ -1,6 +1,7 @@
 import * as core from '@actions/core'
 import {BranchResponse} from '../types/branches'
 import {github, owner, repo} from './get-context'
+import {RulesetResponse} from '../types/github-api'
 
 /**
  * Removes branches that don´t allow deletions
@@ -16,17 +17,16 @@ export async function checkBranchProtection(branches: BranchResponse[]): Promise
         repo,
         branch: branch.branchName
       })
-      
+
       // Check rulesets
-      const rulesets = await github.rest.repos.getBranchRules({
+      const rulesets = (await github.rest.repos.getBranchRules({
         owner,
         repo,
         branch: branch.branchName
-      })
+      })) as RulesetResponse
 
       // If either legacy protection or rulesets prevent deletion, remove the branch
-      if (!branchProtection.data.allow_deletions?.enabled || 
-          rulesets.data.some(ruleset => !ruleset.allow_deletions)) {
+      if (!branchProtection.data.allow_deletions?.enabled || rulesets.data.some(ruleset => !ruleset.deletion)) {
         //remove branch from list
         branchesToRemove.push(branch)
       }
