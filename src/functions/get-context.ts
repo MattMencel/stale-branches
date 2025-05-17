@@ -77,6 +77,7 @@ export async function validateInputs(): Promise<Inputs> {
     const ignoreIssueInteraction = core.getBooleanInput('ignore-issue-interaction')
     const includeProtectedBranches = core.getBooleanInput('include-protected-branches')
     const ignoreCommitMessages = core.getInput('ignore-commit-messages')
+    const ignoreCommittersInput = core.getInput('ignore-committers')
 
     //Assign inputs
     result.daysBeforeStale = inputDaysBeforeStale
@@ -94,6 +95,12 @@ export async function validateInputs(): Promise<Inputs> {
     result.includeProtectedBranches = includeProtectedBranches
     if (ignoreCommitMessages) {
       result.ignoreCommitMessages = ignoreCommitMessages
+    }
+    if (ignoreCommittersInput) {
+      result.ignoreCommitters = ignoreCommittersInput
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean)
     }
   } catch (err: unknown) {
     if (err instanceof Error) {

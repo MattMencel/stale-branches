@@ -9,8 +9,8 @@ import {getBranches} from './functions/get-branches'
 import {getIssueBudget} from './functions/get-stale-issue-budget'
 import {getIssues} from './functions/get-issues'
 import {getRateLimit} from './functions/get-rate-limit'
-import {getRecentCommitAge, getRecentCommitAgeByNonIgnoredMessage} from './functions/get-commit-age'
-import {getRecentCommitLogin} from './functions/get-committer-login'
+import {getRecentCommitAge} from './functions/get-commit-age'
+import {getRecentCommitInfo} from './functions/get-commit-info'
 import {logActiveBranch} from './functions/logging/log-active-branch'
 import {logBranchGroupColor} from './functions/logging/log-branch-group-color'
 import {logLastCommitColor} from './functions/logging/log-last-commit-color'
@@ -80,22 +80,28 @@ export async function run(): Promise<void> {
 
       //Get age of last commit, generate issue title, and filter existing issues to current branch
       let commitAge: number
+      let ignoredCommitInfo: {ignoredCount: number; usedFallback: boolean} | undefined = undefined
       if (validInputs.ignoreCommitMessages && validInputs.ignoreCommitMessages.trim() !== '') {
         const ignoredMessages = validInputs.ignoreCommitMessages
           .split(',')
           .map(s => s.trim())
           .filter(Boolean)
-        commitAge = await getRecentCommitAgeByNonIgnoredMessage(branchToCheck.commmitSha, ignoredMessages, validInputs.daysBeforeDelete)
+        const commitInfo = await getRecentCommitInfo(branchToCheck.commmitSha, ignoredMessages, validInputs.daysBeforeDelete, validInputs.ignoreCommitters)
+        commitAge = commitInfo.age
+        ignoredCommitInfo = {ignoredCount: commitInfo.ignoredCount, usedFallback: commitInfo.usedFallback}
+        if (validInputs.tagLastCommitter === true) {
+          lastCommitLogin = commitInfo.committer
+        }
       } else {
-        commitAge = await getRecentCommitAge(branchToCheck.commmitSha)
+        // No ignored messages, but still use getRecentCommitInfo for consistency
+        const commitInfo = await getRecentCommitInfo(branchToCheck.commmitSha, [], undefined, validInputs.ignoreCommitters)
+        commitAge = commitInfo.age
+        if (validInputs.tagLastCommitter === true) {
+          lastCommitLogin = commitInfo.committer
+        }
       }
       const issueTitleString = createIssueTitleString(branchToCheck.branchName)
       const filteredIssue = existingIssue.filter(branchIssue => branchIssue.issueTitle === issueTitleString)
-
-      // Skip looking for last commit's login if input is set to false
-      if (validInputs.tagLastCommitter === true) {
-        lastCommitLogin = await getRecentCommitLogin(branchToCheck.commmitSha)
-      }
 
       // Start output group for current branch assessment
       core.startGroup(logBranchGroupColor(branchToCheck.branchName, commitAge, validInputs.daysBeforeStale, validInputs.daysBeforeDelete))
@@ -104,7 +110,7 @@ export async function run(): Promise<void> {
       const branchComparison = await compareBranches(branchToCheck.branchName, validInputs.compareBranches)
 
       //Log last commit age
-      core.info(logLastCommitColor(commitAge, validInputs.daysBeforeStale, validInputs.daysBeforeDelete))
+      core.info(logLastCommitColor(commitAge, validInputs.daysBeforeStale, validInputs.daysBeforeDelete, ignoredCommitInfo))
 
       //Create new issue if branch is stale & existing issue is not found & issue budget is >0
       if (commitAge > validInputs.daysBeforeStale) {
@@ -147,7 +153,8 @@ export async function run(): Promise<void> {
                 validInputs.commentUpdates,
                 validInputs.daysBeforeDelete,
                 validInputs.staleBranchLabel,
-                validInputs.tagLastCommitter
+                validInputs.tagLastCommitter,
+                ignoredCommitInfo
               )
             } else if (validInputs.dryRun) {
               core.info(`Dry Run: Issue would be updated for branch: ${branchToCheck.branchName}`)

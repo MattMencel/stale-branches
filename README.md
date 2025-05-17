@@ -46,6 +46,7 @@ Inputs are defined in [`action.yml`](action.yml). None are required.:
 | `ignore-issue-interaction`   | If this is enabled, the action will not interact with Github issues.                                                                                                                                                                                                                                                                                                                                                                                                                                                          | false                                                                                                    |
 | `include-protected-branches` | If this is enabled, the action will include protected branches in the process.<br>**Note: When you use this, the token passed to `repo-token` must include "Administration" repository permissions (read)**. For details, see https://docs.github.com/en/rest/branches/branch-protection?apiVersion=2022-11-28                                                                                                                                                                                                                | false                                                                                                    |
 | `ignore-commit-messages`     | Comma-separated list of commit messages (or substrings) to ignore when determining commit age. If provided, commits with these messages will be ignored when calculating branch age. e.g. Ignore commits produced by automated workflows.                                                                                                                                                                                                                                                                                     |
+| `ignore-committers`          | Comma-separated list of committer usernames to ignore when calculating the most recent commit.                                                                                                                                                                                                                                                                                                                                                                                                                                | ''                                                                                                       |
 
 ### Outputs
 
@@ -127,7 +128,23 @@ jobs:
           dry-run: false
           ignore-issue-interaction: false
           ignore-commit-messages: ''
+          ignore-committers: ''
 ```
+
+### Ignoring Commits by Message and Committer
+
+You can use both `ignore-commit-messages` and `ignore-committers` together. A commit will be ignored if **either** its message matches any ignored message **or** its committer matches any ignored
+committer. This allows you to filter out automated commits, bots, or specific users when determining branch staleness.
+
+**Example:**
+
+```yaml
+with:
+  ignore-commit-messages: 'WIP,auto-update'
+  ignore-committers: 'dependabot[bot],github-actions[bot]'
+```
+
+This will ignore any commit with a message containing "WIP" or "auto-update", or any commit made by the users `dependabot[bot]` or `github-actions[bot]`.
 
 ## Contributing
 

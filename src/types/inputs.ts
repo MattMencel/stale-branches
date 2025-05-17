@@ -108,4 +108,9 @@ export interface Inputs {
    * If provided, commits with these messages will be ignored when calculating branch age.
    */
   ignoreCommitMessages?: string
+
+  /**
+   * Optional: List of committer usernames to ignore when calculating the most recent commit.
+   */
+  ignoreCommitters?: string[]
 }
